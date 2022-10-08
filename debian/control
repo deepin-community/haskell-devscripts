@@ -1,0 +1,62 @@
+Source: haskell-devscripts
+Section: haskell
+Priority: optional
+Maintainer: Debian Haskell Group <pkg-haskell-maintainers@lists.alioth.debian.org>
+Uploaders: Joachim Breitner <nomeata@debian.org>
+         , Louis Bettens <louis@bettens.info>
+         , Ilias Tsitsimpis <iliastsi@debian.org>
+Build-Depends: debhelper-compat (= 12)
+Build-Depends-Indep: perl
+Standards-Version: 4.5.0
+Rules-Requires-Root: no
+Vcs-Browser: https://salsa.debian.org/haskell-team/haskell-devscripts
+Vcs-Git: https://salsa.debian.org/haskell-team/haskell-devscripts.git/
+
+Package: haskell-devscripts-minimal
+Architecture: all
+Depends: dctrl-tools
+  , debhelper (>= 10)
+  , dh-buildinfo
+  , ghc
+  , cdbs
+  , ${misc:Depends}
+  , html-xml-utils
+  , ghc-haddock
+Breaks: haskell-devscripts (<= 0.10.2.3)
+Replaces: haskell-devscripts (<= 0.10.2.3)
+Suggests: haskell-devscripts
+Description: Tools to help Debian developers build Haskell packages
+ This package provides a collection of scripts to help build Haskell
+ packages for Debian.  Unlike haskell-utils, this package is not
+ expected to be installed on the machines of end users.
+ .
+ This package is designed to support Cabalized Haskell libraries.  It
+ is designed to build a library for each supported Debian compiler or
+ interpreter, generate appropriate postinst/prerm files for each one,
+ generate appropriate substvars entries for each one, and install the
+ package in the Debian temporary area as part of the build process.
+ .
+ This package doesn't provide functionality for generating coloured
+ documentation and is mostly intended for bootstrapping a new
+ architecture. If you want coloured documentation, use
+ haskell-devscripts.
+
+Package: haskell-devscripts
+Architecture: all
+Depends: ${misc:Depends}
+  , ghc (>= 8.2)
+  , haskell-devscripts-minimal (= ${source:Version})
+  , hscolour
+Description: Tools to help Debian developers build Haskell packages
+ This package provides a collection of scripts to help build Haskell
+ packages for Debian.  Unlike haskell-utils, this package is not
+ expected to be installed on the machines of end users.
+ .
+ This package is designed to support Cabalized Haskell libraries.  It
+ is designed to build a library for each supported Debian compiler or
+ interpreter, generate appropriate postinst/prerm files for each one,
+ generate appropriate substvars entries for each one, and install the
+ package in the Debian temporary area as part of the build process.
+ .
+ This package is actually an empty package and is only useful for its
+ dependency on hscolour.

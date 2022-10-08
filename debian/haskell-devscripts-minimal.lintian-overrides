@@ -1,0 +1,3 @@
+# these make sense in a devscripts package
+binary-package-depends-on-toolchain-package *debhelper*
+binary-package-depends-on-toolchain-package *cdbs*
