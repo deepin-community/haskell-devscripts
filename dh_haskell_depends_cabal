@@ -1,0 +1,268 @@
+#!/usr/bin/perl
+
+# Copyright © 2022 Felix Lechner <felix.lechner@lease-up.com>
+#
+# based on a shell script by the same name
+#     Arjan Oosting <arjan@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use v5.20;
+use warnings;
+use utf8;
+
+use Const::Fast;
+use List::SomeUtils qw(any uniq);
+use Path::Tiny;
+use Unicode::UTF8 qw(encode_utf8);
+
+use Debian::Debhelper::Buildsystem::Haskell::Recipes qw(
+  run
+  installable_type
+  installable_hc
+  hc_pkgdir
+  ghc_pkg_command
+  load_ghc_database
+  hashed_id_to_virtual_installable
+);
+use Debian::Debhelper::Dh_Lib;
+
+const my $EMPTY => q{};
+const my $SPACE => q{ };
+const my $COMMA => q{,};
+const my $PLUS => q{+};
+
+const my $NEWLINE => qq{\n};
+
+init(
+    options => {
+        'config-shipper=s' => \$dh{CONFIG_SHIPPER},
+    });
+
+my $haskell_ghc_pkg = ghc_pkg_command();
+
+for my $installable (@{ $dh{DOPACKAGES} }) {
+
+    my $type = installable_type($installable);
+
+    my $haskell_compiler
+      = installable_hc($installable) || $ENV{DEB_DEFAULT_COMPILER};
+
+    my $pkgdir = hc_pkgdir($haskell_compiler);
+
+    my $config_shipper = $dh{CONFIG_SHIPPER} || $installable;
+    my $confdir = "debian/$config_shipper/$pkgdir";
+
+    my @ghc_configs;
+    @ghc_configs
+      = grep { $_->is_file } path($confdir)->children(qr{ [.]conf $}x)
+      if -e $confdir;
+
+    unless (@ghc_configs) {
+
+        warn encode_utf8('No Haskell package description are being shipped.');
+        next;
+    }
+
+    my @hashed_ids
+      = cabal_depends($haskell_ghc_pkg, $ENV{DEB_GHC_DATABASE},@ghc_configs);
+
+    my @depends;
+    for my $hashed_id (@hashed_ids) {
+
+        # look in normal database
+        my $prerequisite
+          =hashed_id_to_virtual_installable($haskell_compiler,
+            $hashed_id, $type, $haskell_ghc_pkg, '--global');
+
+        if (length $prerequisite) {
+
+      # as a transition measure, check if dpkg knows about this virtual package
+            next
+              unless system(
+                "dpkg-query --show $prerequisite > /dev/null 2> /dev/null")
+              == 0;
+
+        } else {
+            my $provider
+              = providing_package_for_ghc($haskell_compiler,$hashed_id, $type);
+
+            if (!length $provider) {
+
+                warn encode_utf8(
+"WARNING: No Debian package provides the hashed Hackage id $hashed_id."
+                );
+                next;
+            }
+
+            my $version
+              = run(qw{dpkg-query --showformat=${Version} --show},$provider);
+
+            if (!length $version) {
+
+                warn encode_utf8(
+"WARNING: No Debian version available for prerequisite $provider."
+                );
+                next;
+            }
+
+            my $next_upstream_version = $version;
+            $next_upstream_version =~ s{ - [^-]* $}{}x;
+            $next_upstream_version .= $PLUS;
+
+            $prerequisite
+              ="$provider (>= $version), $provider (<< $next_upstream_version)";
+        }
+
+        push(@depends, $prerequisite);
+    }
+
+    push(@depends, "$config_shipper (=\${binary:Version})")
+      if $installable ne $config_shipper;
+
+    # fix sort order
+    local $ENV{LC_ALL} = 'C.UTF-8';
+
+    my $substvars_path = "debian/$installable.substvars";
+    replace_line($substvars_path, 'haskell:Depends',
+        join($COMMA . $SPACE, (sort +uniq @depends)));
+}
+
+exit;
+
+sub cabal_depends {
+    my ($ghc_pkg, $tmp_db, @configs) = @_;
+
+    load_ghc_database($ghc_pkg, $tmp_db, @configs);
+
+    my @prerequisites;
+    for my $config (@configs) {
+
+        my $name = path($config)->basename(qr{ [.]conf $}x);
+        my $depends
+          = run($ghc_pkg, '--package-db', $tmp_db, qw{--simple-output field},
+            $name, 'depends');
+        push(@prerequisites, split($SPACE, $depends // $EMPTY));
+    }
+
+    my @have = uniq @prerequisites;
+    my @exclude_patterns = split($SPACE, $ENV{DH_EXCLUDES} // $EMPTY);
+
+    # not sure this complies with Debhelper expectations
+    # excluded installables matching the patterns with or without version
+    # the versions should probably be dropped by the caller
+    s{ - [0-9] [.0-9a-zA-Z]* $}{}x for @exclude_patterns;
+
+    my @retained;
+    for my $prerequisite (@have) {
+
+        next
+          if any { $prerequisite =~ m{\Q$_\E} } @exclude_patterns;
+
+        push(@retained, $prerequisite);
+    }
+
+    return @retained;
+}
+
+sub providing_package_for_ghc {
+    my ($compiler, $hashed_id, $type) = @_;
+
+    my $extension = $EMPTY;
+    $extension = '_p'
+      if $type eq 'prof';
+
+    my $ghc_version= run(qw{dpkg-query --showformat=${Version} --show ghc});
+
+    my $directory_line= ghc_pkg_field($compiler, $hashed_id, 'library-dirs');
+    my (undef, $directory_list) = split(m{ \s* : \s* }x, $directory_line, 2);
+    my @library_dirs = split(m{ \s* , \s* }x, $directory_list);
+
+    my $library_line = ghc_pkg_field($compiler, $hashed_id, 'hs-libraries');
+    my (undef, $library_list) = split(m{ \s* : \s* }x, $library_line, 2);
+    my @libraries = split(m{ \s* , \s* }x, $library_list);
+
+    # look only at the first one
+    my $library = $libraries[0];
+
+    for my $directory (@library_dirs) {
+
+        my $library_path = "$directory/lib$library$extension.a";
+        next
+          unless -e $library_path;
+
+        my $line = run(qw{dpkg-query --search}, $library_path);
+        my ($installable) = split(m{ \s* : \s* }x, $line, 2);
+
+        return $installable;
+    }
+
+    return ();
+}
+
+sub ghc_pkg_field {
+    my ($compiler, $hashed_id, $field) = @_;
+
+    my $output= run("$compiler-pkg", qw{--global field}, $hashed_id, $field);
+
+    # may not process multi-line fields correctly
+    my ($value) = split($NEWLINE, $output, 2);
+
+    return ($value // $EMPTY);
+}
+
+sub replace_line {
+    my ($path, $field, $value) = @_;
+
+    path($path)->touch;
+
+    my @lines = grep { !m{^ $field = }x } path($path)->lines_utf8;
+
+    push(@lines, "$field=$value" . $NEWLINE);
+
+    path($path)->spew_utf8(@lines);
+
+    return;
+}
+
+=head1 NAME
+
+dh_haskell_depends_cabal - calculates Haskell dependencies on Cabalized libraries
+
+=head1 SYNOPSIS
+
+B<dh_haskell_depends_cabal> [S<I<debhelper options>>]
+
+=head1 DESCRIPTION
+
+dh_haskell_depends_cabal is a debhelper program that helps with calculating dependencies
+for building Haskell libraries.
+
+=head1 SEE ALSO
+
+L<debhelper(7)>
+
+=head1 AUTHOR
+
+John Goerzen <jgoerzen@complete.org>
+
+Based on ideas in dh_python by Josselin Mouette <joss@debian.org>
+
+=cut
+
+# Local Variables:
+# indent-tabs-mode: nil
+# cperl-indent-level: 4
+# End:
+# vim: syntax=perl sw=4 sts=4 sr et

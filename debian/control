@@ -5,9 +5,10 @@ Maintainer: Debian Haskell Group <pkg-haskell-maintainers@lists.alioth.debian.or
 Uploaders: Joachim Breitner <nomeata@debian.org>
          , Louis Bettens <louis@bettens.info>
          , Ilias Tsitsimpis <iliastsi@debian.org>
-Build-Depends: debhelper-compat (= 12)
+         , Felix Lechner <felix.lechner@lease-up.com>
+Build-Depends: debhelper-compat (= 13)
 Build-Depends-Indep: perl
-Standards-Version: 4.5.0
+Standards-Version: 4.6.1
 Rules-Requires-Root: no
 Vcs-Browser: https://salsa.debian.org/haskell-team/haskell-devscripts
 Vcs-Git: https://salsa.debian.org/haskell-team/haskell-devscripts.git/
@@ -19,11 +20,19 @@ Depends: dctrl-tools
   , dh-buildinfo
   , ghc
   , cdbs
-  , ${misc:Depends}
   , html-xml-utils
   , ghc-haddock
-Breaks: haskell-devscripts (<= 0.10.2.3)
-Replaces: haskell-devscripts (<= 0.10.2.3)
+  , libconst-fast-perl
+  , libdevel-confess-perl
+  , libipc-run3-perl
+  , liblist-someutils-perl
+  , libpath-tiny-perl
+  , libtimedate-perl
+  , libunicode-utf8-perl
+  , perl
+  , ${misc:Depends}
+  , ${perl:Depends}
+Breaks: dh-haskell (<= 0.6.5)
 Suggests: haskell-devscripts
 Description: Tools to help Debian developers build Haskell packages
  This package provides a collection of scripts to help build Haskell
@@ -47,7 +56,7 @@ Depends: ${misc:Depends}
   , ghc (>= 8.2)
   , haskell-devscripts-minimal (= ${source:Version})
   , hscolour
-Description: Tools to help Debian developers build Haskell packages
+Description: Debian tools to build Haskell packages (with hscolour)
  This package provides a collection of scripts to help build Haskell
  packages for Debian.  Unlike haskell-utils, this package is not
  expected to be installed on the machines of end users.

@@ -1,0 +1,132 @@
+#!/usr/bin/perl
+
+# Copyright © 2022 Felix Lechner <felix.lechner@lease-up.com>
+#
+# based on a shell script by the same name
+#     Joachim Breitner <nomeata@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use v5.20;
+use warnings;
+use utf8;
+
+use Const::Fast;
+use Path::Tiny;
+use Unicode::UTF8 qw(encode_utf8);
+
+use Debian::Debhelper::Buildsystem::Haskell::Recipes qw(run);
+use Debian::Debhelper::Dh_Lib;
+
+const my $EMPTY => q{};
+const my $NEWLINE => qq{\n};
+
+init();
+
+# see Bug#1009162
+my $description = get_source_field('Description');
+
+# otherwise try X-Description
+$description ||= get_source_field('X-Description');
+
+my ($short_description, $long_description) = split(m{\n}, $description, 2);
+
+$short_description //= $EMPTY;
+$long_description //= $EMPTY;
+
+# drop initial spaces
+$long_description =~ s{^ [ ] }{}gmx;
+
+# drop dot placeholder for empty lines
+$long_description =~ s{^ [.] $}{}gmx;
+
+# prepare for dpkg-gencontrol
+$long_description =~ s{ \n }{\$\{Newline\}}gx;
+
+for my $installable (@{ $dh{DOPACKAGES} }) {
+
+    my $substvars_path = "debian/$installable.substvars";
+
+    replace_line($substvars_path, 'haskell:ShortDescription',
+        $short_description);
+    replace_line($substvars_path, 'haskell:LongDescription',$long_description);
+}
+
+exit;
+
+sub get_source_field {
+    my ($name) = @_;
+
+    die encode_utf8('grep-dctrl is missing')
+      unless system('command -v grep-dctrl > /dev/null') == 0;
+
+    # need regex to avoid the empty string, which would be filtered by run()
+    my $value= run(
+        qw{grep-dctrl --no-field-names},
+        "--show-field=$name",
+        qw{--field=Source --regex .* debian/control}
+    );
+
+    chomp $value;
+
+    return $value;
+}
+
+sub replace_line {
+    my ($path, $field, $value) = @_;
+
+    $value //= $EMPTY;
+
+    path($path)->touch;
+
+    my @lines = grep { !m{^ $field = }x } path($path)->lines_utf8;
+
+    push(@lines, "$field=$value" . $NEWLINE);
+
+    path($path)->spew_utf8(@lines);
+
+    return;
+}
+
+=head1 NAME
+
+dh_haskell_description - store Haskell package descriptions info in substvars
+
+=head1 SYNOPSIS
+
+B<dh_haskell_description> [S<I<debhelper options>>]
+
+=head1 DESCRIPTION
+
+dh_haskell_description is a Debhelper program that stores package descriptions in substvars.
+
+You can use it like this: C<${haskell:ShortDescription}>
+
+or like that: C<${haskell:LongDescription}>
+
+=head1 SEE ALSO
+
+L<debhelper(7)>
+
+=head1 AUTHOR
+
+Joachim Breitner <nomeata@debian.org>
+
+=cut
+
+# Local Variables:
+# indent-tabs-mode: nil
+# cperl-indent-level: 4
+# End:
+# vim: syntax=perl sw=4 sts=4 sr et

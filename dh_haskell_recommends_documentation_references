@@ -1,0 +1,163 @@
+#!/usr/bin/perl
+
+# Copyright © 2022 Felix Lechner <felix.lechner@lease-up.com>
+#
+# based on a shell script by the same name
+#     Arjan Oosting <arjan@debian.org>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use v5.20;
+use warnings;
+use utf8;
+
+use Const::Fast;
+use List::SomeUtils qw(uniq);
+use IPC::Run3;
+use Path::Tiny;
+use Unicode::UTF8 qw(encode_utf8);
+use Cwd qw(abs_path);
+
+use Debian::Debhelper::Buildsystem::Haskell::Recipes qw(run_quiet);
+use Debian::Debhelper::Dh_Lib;
+
+const my $EMPTY => q{};
+const my $SPACE => q{ };
+const my $COMMA => q{,};
+
+const my $NEWLINE => qq{\n};
+const my $NULL => qq{\0};
+
+const my $WAIT_STATUS_SHIFT => 8;
+
+init();
+
+die encode_utf8('grep-dctrl is missing')
+  unless system('command -v grep-dctrl > /dev/null') == 0;
+
+for my $installable (@{ $dh{DOPACKAGES} }) {
+
+    say encode_utf8(
+        "Finding all links in the documentation in installable $installable.");
+    my @links =split(
+        m{\n}x,
+        run_quiet(
+            'find', "debian/$installable",
+            qw{-name *.html -exec hxwls -r \{\} ;}
+        ));
+
+    my @files;
+    for my $link (@links) {
+
+        # filter out fragment, too
+        next
+          unless $link =~ m{^ file:// ([^#]*) }x;
+
+        my $file = $1;
+        push(@files, $file);
+    }
+
+    my @absolute = uniq +grep { m{^ / }x } @files;
+    @absolute = map { abs_path($_) } @absolute;
+
+    # already in UTF-8
+    my $input_bytes = $EMPTY;
+    $input_bytes .= $_ . $NULL for @absolute;
+
+    my $stdout_bytes;
+    my $stderr_bytes;
+
+    my @combined = qw{xargs --null --no-run-if-empty dpkg --search};
+    run3(\@combined, \$input_bytes, \$stdout_bytes, \$stderr_bytes);
+
+    my $exitcode = $?;
+    my $status = ($exitcode >> $WAIT_STATUS_SHIFT);
+
+    # already in UTF-8
+    warn encode_utf8("Non-zero exit code $exitcode."). $NEWLINE. $stderr_bytes
+      if $exitcode;
+
+    my @lines = split(m{\n}, $stdout_bytes);
+
+    my @recommends;
+    for my $line (@lines) {
+
+        my ($origin) = split(m{:}, $line, 2);
+        next
+          unless length $origin;
+
+        push(@recommends, $origin);
+    }
+
+    my $dev = $installable;
+    $dev =~ s{ - [^-]+ $}{-dev}x;
+
+    push(@recommends, $dev)
+      if system(qw{grep-dctrl --quiet --field=Package},$dev, 'debian/control')
+      == 0;
+
+    # fix sort order
+    local $ENV{LC_ALL} = 'C.UTF-8';
+
+    my $substvars_path = "debian/$installable.substvars";
+    replace_line($substvars_path, 'haskell:Recommends',
+        join($COMMA . $SPACE, (sort +uniq @recommends)));
+}
+
+exit;
+
+sub replace_line {
+    my ($path, $field, $value) = @_;
+
+    path($path)->touch;
+
+    my @lines = grep { !m{^ $field = }x } path($path)->lines_utf8;
+
+    push(@lines, "$field=$value" . $NEWLINE);
+
+    path($path)->spew_utf8(@lines);
+
+    return;
+}
+
+=head1 NAME
+
+dh_haskell_recommends_documentation_references - calculates Haskell dependencies on Cabalized libraries
+
+=head1 SYNOPSIS
+
+B<dh_haskell_recommends_documentation_references> [S<I<debhelper options>>]
+
+=head1 DESCRIPTION
+
+dh_haskell_recommends_documentation_references is a debhelper program that helps with calculating dependencies
+for building Haskell libraries.
+
+=head1 SEE ALSO
+
+L<debhelper(7)>
+
+=head1 AUTHOR
+
+John Goerzen <jgoerzen@complete.org>
+
+Based on ideas in dh_python by Josselin Mouette <joss@debian.org>
+
+=cut
+
+# Local Variables:
+# indent-tabs-mode: nil
+# cperl-indent-level: 4
+# End:
+# vim: syntax=perl sw=4 sts=4 sr et

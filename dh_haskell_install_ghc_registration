@@ -1,0 +1,113 @@
+#!/usr/bin/perl
+
+# Copyright © 2022 Felix Lechner <felix.lechner@lease-up.com>
+#
+# based on a shell script library by John Goerzen
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use v5.20;
+use warnings;
+use utf8;
+
+use File::Temp;
+use Unicode::UTF8 qw(encode_utf8);
+
+use Debian::Debhelper::Buildsystem::Haskell::Recipes qw(
+  run
+  installable_hc
+  hc_pkgdir
+);
+use Debian::Debhelper::Dh_Lib;
+
+init();
+
+die encode_utf8('No Setup.hs executable named.')
+  unless length $ENV{DEB_SETUP_BIN_NAME};
+
+for my $installable (@{ $dh{DOPACKAGES} }) {
+
+    my $compiler = installable_hc($installable) || $ENV{DEB_DEFAULT_COMPILER};
+    my $pkgdir = hc_pkgdir($compiler);
+
+    my $tmp = File::Temp->new();
+    my %options = (
+        stdout => $tmp->filename,
+        update_env => { LC_ALL => 'C.UTF-8'},
+    );
+    doit(\%options, $ENV{DEB_SETUP_BIN_NAME},
+        'register', "--builddir=dist-$compiler",
+        qw{--gen-pkg-config --verbose=verbose+nowrap});
+    my $output = do { local $/; <$tmp> };
+    say $output if !$ENV{DH_QUIET};
+
+    if ($output
+        =~ m{^Creating \s package \s registration \s (file|directory): \s+ (\S+) $}mx) {
+
+        my $path = $2;
+        my $pkg_config = $2;
+
+        if (-d $path) {
+            # https://downloads.haskell.org/cabal/Cabal-3.0.0.0/doc/users-guide/installing-packages.html#cmdoption-setup-register-gen-pkg-config
+            # If the package registration is a directory, choose the first one since the other(s) will be internal libraries that we don't want to install.
+            my @pkg_configs = glob("$path/*");
+            $path = $pkg_configs[0];
+        }
+
+        run(qw{sed -i}, 's/^exposed: True$/exposed: False/', $path)
+            if length $ENV{HASKELL_HIDE_PACKAGES};
+
+        run(qw{install -D --mode=644},
+            $path, "debian/$installable/$pkgdir/$pkg_config");
+
+        run(qw{rm -rf}, $pkg_config);
+
+    } else {
+
+        die encode_utf8('Cannot generate package registration.');
+    }
+}
+
+exit;
+
+=head1 NAME
+
+dh_haskell_install_ghc_registration - Haskell install helper
+
+=head1 SYNOPSIS
+
+B<dh_haskell_install_ghc_registration> [S<I<debhelper options>>]
+
+=head1 DESCRIPTION
+
+dh_haskell_install_ghc_registration is a Debhelper program that helps with installing files
+when building Haskell libraries.
+
+=head1 SEE ALSO
+
+L<debhelper(7)>
+
+=head1 AUTHOR
+
+John Goerzen <jgoerzen@complete.org>
+
+Based on ideas in dh_python by Josselin Mouette <joss@debian.org>
+
+=cut
+
+# Local Variables:
+# indent-tabs-mode: nil
+# cperl-indent-level: 4
+# End:
+# vim: syntax=perl sw=4 sts=4 sr et

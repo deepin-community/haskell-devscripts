@@ -1,0 +1,102 @@
+#!/usr/bin/perl
+
+# Copyright © 2022 Felix Lechner <felix.lechner@lease-up.com>
+#
+# based on a shell script library by John Goerzen
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use v5.20;
+use warnings;
+use utf8;
+
+use Const::Fast;
+use Cwd;
+use Unicode::UTF8 qw(encode_utf8);
+
+use Debian::Debhelper::Buildsystem::Haskell::Recipes qw(
+  run
+  installable_hc
+  hc_libdir
+);
+use Debian::Debhelper::Dh_Lib;
+
+const my $DOT => q{.};
+const my $SEMICOLON => q{;};
+
+init(
+    options => {
+        'source-dir=s' => \$dh{SOURCE_DIR},
+    });
+
+for my $installable (@{ $dh{DOPACKAGES} }) {
+
+    my $compiler = installable_hc($installable) || $ENV{DEB_DEFAULT_COMPILER};
+    my $libdir = hc_libdir($compiler);
+
+    my $source = $dh{SOURCE_DIR} || $DOT;
+
+    next
+      unless -e "$source/$libdir";
+
+    my $savedir = Cwd::getcwd;
+    chdir($source)
+      or die encode_utf8("Cannot change folder to $source");
+
+    run(
+        'find',
+        "./$libdir",
+        qw{ ( ! -name *_p.a ! -name *.p_hi ! -type d ) },
+        qw{-exec install -D --mode=644},
+        '{}',
+        "$savedir/debian/$installable/{}",
+        $SEMICOLON
+    );
+
+    chdir($savedir)
+      or warn encode_utf8("Cannot change folder to $savedir");
+}
+
+exit;
+
+=head1 NAME
+
+dh_haskell_install_development_libs - Haskell install helper
+
+=head1 SYNOPSIS
+
+B<dh_haskell_install_development_libs> [S<I<debhelper options>>]
+
+=head1 DESCRIPTION
+
+dh_haskell_install_development_libs is a Debhelper program that helps with installing files
+when building Haskell libraries.
+
+=head1 SEE ALSO
+
+L<debhelper(7)>
+
+=head1 AUTHOR
+
+John Goerzen <jgoerzen@complete.org>
+
+Based on ideas in dh_python by Josselin Mouette <joss@debian.org>
+
+=cut
+
+# Local Variables:
+# indent-tabs-mode: nil
+# cperl-indent-level: 4
+# End:
+# vim: syntax=perl sw=4 sts=4 sr et
