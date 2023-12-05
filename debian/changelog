@@ -1,3 +1,270 @@
+haskell-devscripts (0.16.33) unstable; urgency=medium
+
+  * Remove debian/tmp-setup-hs directory in clean target
+
+ -- Scott Talbert <swt@techie.net>  Tue, 28 Nov 2023 22:35:12 -0500
+
+haskell-devscripts (0.16.32) unstable; urgency=medium
+
+  * Canonicalize paths in dh_haskell_recommends_documentation_references
+
+ -- Ilias Tsitsimpis <iliastsi@debian.org>  Sat, 23 Sep 2023 10:00:43 +0300
+
+haskell-devscripts (0.16.31) unstable; urgency=medium
+
+  * Modify ghc_pkg_command() to work with the new Hadrian build system
+
+ -- Ilias Tsitsimpis <iliastsi@debian.org>  Tue, 19 Sep 2023 22:02:36 +0300
+
+haskell-devscripts (0.16.30) unstable; urgency=medium
+
+  * Add compatibility for GHC 9.4
+
+ -- Ilias Tsitsimpis <iliastsi@debian.org>  Fri, 25 Aug 2023 19:19:25 +0300
+
+haskell-devscripts (0.16.29) unstable; urgency=medium
+
+  * Re-define the 'debian/tmp-inst-%' target (Closes: #1020072, #1020206,
+    #1020154, #1020182, #1020175, #1020165, #1020212, #1020159,
+    #1020163, #1020157)
+
+ -- Ilias Tsitsimpis <iliastsi@debian.org>  Sun, 25 Sep 2022 15:54:06 +0300
+
+haskell-devscripts (0.16.28) unstable; urgency=medium
+
+  * Patch from Steve Langasek to not build docs during
+    binary-arch.  closes: #1018979.
+  * Only install extra-packages file for -dev package.
+    closes: #1016506
+
+ -- Clint Adams <clint@debian.org>  Tue, 06 Sep 2022 16:32:30 -0400
+
+haskell-devscripts (0.16.27) unstable; urgency=medium
+
+  * Fix GetCabalVersion.hs on GHC 8.8.4
+  * Fix lintian warnings
+
+ -- Scott Talbert <swt@techie.net>  Tue, 02 Aug 2022 11:32:04 -0400
+
+haskell-devscripts (0.16.26) unstable; urgency=medium
+
+  * Run package registration with a UTF-8 locale (Closes: #1012568)
+
+ -- Scott Talbert <swt@techie.net>  Tue, 02 Aug 2022 10:21:17 -0400
+
+haskell-devscripts (0.16.25) unstable; urgency=medium
+
+  * Use doit() in build & check recipes to show progress
+
+ -- Scott Talbert <swt@techie.net>  Fri, 29 Jul 2022 18:09:18 -0400
+
+haskell-devscripts (0.16.24) unstable; urgency=medium
+
+  * Add missing dependency on the check-ghc-stamp target
+
+ -- Ilias Tsitsimpis <iliastsi@debian.org>  Thu, 21 Jul 2022 11:48:59 +0300
+
+haskell-devscripts (0.16.23) unstable; urgency=medium
+
+  * Re-add separate configure/check/haddock targets
+
+ -- Ilias Tsitsimpis <iliastsi@debian.org>  Wed, 20 Jul 2022 17:58:43 +0300
+
+haskell-devscripts (0.16.22) unstable; urgency=medium
+
+  * Fix bug where ${CABAL_PACKAGE}.cabal may not exist.
+
+ -- Ilias Tsitsimpis <iliastsi@debian.org>  Mon, 04 Jul 2022 17:01:34 +0300
+
+haskell-devscripts (0.16.21) unstable; urgency=medium
+
+  * Work around old timestamps in Hackage tarballs.
+
+ -- Ilias Tsitsimpis <iliastsi@debian.org>  Fri, 01 Jul 2022 21:11:38 +0300
+
+haskell-devscripts (0.16.20) unstable; urgency=medium
+
+  * Use Haskell to parse .cabal files (Closes: #1012569)
+
+ -- Scott Talbert <swt@techie.net>  Sun, 19 Jun 2022 20:38:23 -0400
+
+haskell-devscripts (0.16.19) unstable; urgency=medium
+
+  * Team Upload.
+  * Revert "Re-add separate configure/check/haddock targets" as it broke
+    haddock installation
+
+ -- Scott Talbert <swt@techie.net>  Thu, 02 Jun 2022 21:55:55 -0400
+
+haskell-devscripts (0.16.18) unstable; urgency=medium
+
+  * Team Upload.
+  * Re-add separate configure/check/haddock targets (Closes: #1011762,
+    #1011767, #1011764, #1011834, #1011873, #1011877, #1011915, #1011860,
+    #1011855, #1011910, #1011896)
+
+ -- Scott Talbert <swt@techie.net>  Tue, 31 May 2022 22:57:07 -0400
+
+haskell-devscripts (0.16.17) unstable; urgency=medium
+
+  * Team Upload.
+  * Perform haddock recipe before build recipe (Closes: #1010739)
+
+ -- Scott Talbert <swt@techie.net>  Mon, 23 May 2022 15:56:54 -0400
+
+haskell-devscripts (0.16.16) unstable; urgency=medium
+
+  * Team Upload.
+  * Fix dh_haskell_depends (Closes: #1010832)
+
+ -- Scott Talbert <swt@techie.net>  Tue, 17 May 2022 16:23:18 -0400
+
+haskell-devscripts (0.16.15) unstable; urgency=medium
+
+  * Team Upload.
+  * Fix parsing of DEB_SETUP_GHC*_CONFIGURE_ARGS (Closes: #1010703)
+
+ -- Scott Talbert <swt@techie.net>  Mon, 16 May 2022 23:07:58 -0400
+
+haskell-devscripts (0.16.14) unstable; urgency=medium
+
+  * Team Upload.
+
+  [ Felix Lechner ]
+  * Anchor dot regex; amends commit 7a92a0a0.
+
+  [ Scott Talbert ]
+  * Add missing export for DEB_ENABLE_TESTS (Closes: #1010179)
+  * Fix GHC package directory registration (Closes: #1009883)
+
+ -- Scott Talbert <swt@techie.net>  Wed, 27 Apr 2022 11:04:45 -0400
+
+haskell-devscripts (0.16.13) unstable; urgency=medium
+
+  * Drop dot placeholders for empty lines in (X-)Description.
+    (Closes: #1009997)
+  * Prevent reading of package .ghci files when finding OS or architecture.
+    (Closes: #845368)
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Sun, 24 Apr 2022 00:00:04 -0700
+
+haskell-devscripts (0.16.12) unstable; urgency=medium
+
+  * Add missing Perl imports for Unicode::UTF8, (Closes: #1009873)
+  * Handle GHC package registrations that are folders. (Closes: #1009883)
+  * Expand DEB_SETUP_GHC_CONFIGURE_ARGS properly. (Closes: #1009925)
+  * Obtain first match directly from regexes, automatically without
+    the /g modifier.
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Thu, 21 Apr 2022 15:37:46 -0700
+
+haskell-devscripts (0.16.11) unstable; urgency=medium
+
+  * Break Debhelper scripts into smaller pieces; use Dh_Lib.
+  * Install package files via small Debhelper scripts instead of
+    centralized recipe.
+  * Remove references to obsolete version of self; old-old-stable
+    has 0.13.3 already.
+  * Revert "Use d/tmp as a uniform intermediate location; multiple compilers
+    are not supported, anyway."
+    - Did not work for pandoc (or dh_install, rather):
+    - This reverts commit d6321a34a1a39c35670df9bfb0a0ea3084aeb094.
+  * Set the link with debian/tmp the other way around.
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Fri, 15 Apr 2022 19:00:55 -0700
+
+haskell-devscripts (0.16.10) unstable; urgency=medium
+
+  * Allow building documentation even when HTML anchors for files cannot
+    be resolved.
+  * Suppress from logs all URLs found in documentation; too noisy.
+  * Use d/tmp as a uniform intermediate location; provide compatibility
+    links for sources with custom rules.
+  * Simplify and rationalize Perl recipes; use environmental variables at
+    higher levels.
+  * Do not install automatic Lintian overrides; will use Lintian's screens
+    instead.
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Wed, 13 Apr 2022 17:39:23 -0700
+
+haskell-devscripts (0.16.9) unstable; urgency=medium
+
+  * Assume ghc is the default compiler when dh_haskell_provides is called
+    in ghc builds.
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Mon, 11 Apr 2022 22:40:21 -0700
+
+haskell-devscripts (0.16.8) unstable; urgency=medium
+
+  * Fix install locations for generalized temporary destination forders.
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Mon, 11 Apr 2022 13:30:35 -0700
+
+haskell-devscripts (0.16.7) unstable; urgency=medium
+
+  * Call install_recipe via Perl hook; encode_utf8 was incorrect for the
+    path, anyway.
+  * Try Description field in Source section before X-Description in d/control.
+    (See: #1009162)
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Mon, 11 Apr 2022 10:06:57 -0700
+
+haskell-devscripts (0.16.6) unstable; urgency=medium
+
+  * Date::Time is in libtimedate-perl and not in libdatetime-perl; require
+    the former instead. (Fixes FTBFS on reproducible builds.)
+  * Find the correct Debian installables for profiling libraries (an
+    undocumented bug).
+  * Restrict Perl API to routines actually called from elsewhere.
+  * Drop unused Perl routines.
+  * Combine the different installation procedures into one install_recipe.
+  * Refuse to run dh_haskell_blurbs unless a default compiler appeared on
+    the command line.
+  * Move a 'clean' command closer to that directory's point of creation
+    and use.
+  * Behave better when called on non-library packages (from Debhelper).
+  * DEB_PACKAGES does not seem to be available in Debhelper; call
+    dh_listpackages instead.
+  * Rename and refactor the calculation of Debian prerequisites.
+  * Use array return types in Perl when appropriate.
+  * Print output from run() only if there is any.
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Mon, 11 Apr 2022 05:44:26 -0700
+
+haskell-devscripts (0.16.5) unstable; urgency=medium
+
+  * Add libdevel-confess-perl to the runtime prerequisites.
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Fri, 08 Apr 2022 17:59:15 -0700
+
+haskell-devscripts (0.16.4) unstable; urgency=medium
+
+  * Rewrite dh_* helpers in Perl; relicense under GPL-3+.
+  * Integrate dh_haskell_extra_depends into dh_haskell_depends.
+  * Prefer Perl module for some calls in the CDBS module hlibrary.mk.
+  * Restrict the functionality of the shell library to uses actually found
+    in the archive.
+  * Combine a few build targets in hlibrary.mk.
+  * Move CDBS-specific commands from the build recipes to the CDBS module
+    hlibrary.mk.
+  * Use the new Lintian tag name custom-library-search-path for overrides
+    instead of the renamed binary-or-shlib-defines-rpath.
+  * Employ more wildcards in the *.install specification for Debhelper.
+  * Rely on a consistent locale for sorting (C.UTF-8).
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Fri, 08 Apr 2022 15:52:45 -0700
+
+haskell-devscripts (0.16.3) unstable; urgency=medium
+
+  * Outsource everything in Dh_Haskell.sh to a Perl module. (Closes: #842549)
+  * Use dh sequencer in d/rules.
+  * Bump Debhelper compat level to 13.
+  * Bump Standards-Version to 4.6.0.
+  * Alter package description to avoid Lintian warning (for being the same).
+  * Add Felix Lechner to Uploaders.
+
+ -- Felix Lechner <felix.lechner@lease-up.com>  Mon, 04 Apr 2022 12:15:02 -0700
+
 haskell-devscripts (0.16.2) unstable; urgency=medium
 
   * Team Upload

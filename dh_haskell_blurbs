@@ -1,75 +1,138 @@
-#! /bin/bash
+#!/usr/bin/perl
+
+# Copyright © 2022 Felix Lechner <felix.lechner@lease-up.com>
 #
-# Create substvars for the Haskell package description blurbs
+# based on a shell script by the same name
+#     Joachim Breitner <nomeata@debian.org>
 #
-# Copyright (C) 2013 Joachim Breitner <nomeata@debian.org>
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-set -e 
+use v5.20;
+use warnings;
+use utf8;
 
-DEB_DEFAULT_COMPILER=$1
-shift
+use Const::Fast;
+use Path::Tiny;
 
-. /usr/share/haskell-devscripts/Dh_Haskell.sh
+use Debian::Debhelper::Dh_Lib;
 
-# PS4=" + dh_haskell_blurbs> "
-# set -x
+const my $EMPTY => q{};
+const my $NEWLINE => qq{\n};
 
-packages=`dh_listpackages`
-hc=`packages_hc ${DEB_DEFAULT_COMPILER} ${packages}`
+const my $MAGIC_MARKER => q/${Newline}/;
 
-for pkg in `dh_listpackages $args`; do
-    sfile=debian/$pkg.substvars
-    touch $sfile
+init(
+    options => {
+        'type=s' => \$dh{TYPE},
+    });
 
-    grep -v -a \
-	-e ^haskell:Blurb \
-	-e ^haskell:ShortBlurb \
-	-e ^haskell:LongDescription \
-	-e ^haskell:ShortDescription \
-	$sfile > $sfile.tmp || true
+my $type = $dh{TYPE} // $EMPTY;
 
-    ext=`package_ext ${pkg}`
-    case "$ext" in
-	dev) cat >> $sfile.tmp <<'__END__' ;;
-haskell:ShortBlurb=
-haskell:Blurb=This package provides a library for the Haskell programming language.${Newline}See http://www.haskell.org/ for more information on Haskell.
-__END__
+my $short_blurb;
+my $long_blurb;
 
-	prof) cat >> $sfile.tmp <<'__END__' ;;
-haskell:ShortBlurb=; profiling libraries
-haskell:Blurb=This package provides a library for the Haskell programming language, compiled${Newline}for profiling.  See http://www.haskell.org/ for more information on Haskell.
-__END__
+if ($type eq 'dev') {
 
-	doc) cat >> $sfile.tmp <<'__END__' ;;
-haskell:ShortBlurb=; documentation
-haskell:Blurb=This package provides the documentation for a library for the Haskell${Newline}programming language.${Newline}See http://www.haskell.org/ for more information on Haskell.
-__END__
+    $short_blurb = $EMPTY;
+    $long_blurb =<< 'QUOTE_END';
+This package provides a library for the Haskell programming language.
+See http://www.haskell.org/ for more information on Haskell.
+QUOTE_END
+}
 
-    esac
+if ($type eq 'prof') {
 
-    shortDescription="$(
-	cat debian/control |
-	grep-dctrl -F Source '' -s X-Description -n|
-	head -n1
-	)"
+    $short_blurb = '; profiling libraries';
+    $long_blurb = << 'QUOTE_END';
+This package provides a library for the Haskell programming language, compiled
+for profiling.  See http://www.haskell.org/ for more information on Haskell.
+QUOTE_END
+}
 
-    longDescription="$(
-	cat debian/control |
-	grep-dctrl -F Source '' -s X-Description -n|
-	sed 's/^[\t ]//;s/^\.$//'|	 # remove initial space
-	tail -n +2|			 # skip short description
-	perl -pe 's/\n$/\$\{Newline}/'|   # prepare for dpkg-gencontrol
-	perl -pe 's/\$\{Newline}$//'      # but not final lineline
-	)"
+if ($type eq 'doc') {
 
-    cat >> $sfile.tmp <<__END__
-haskell:ShortDescription=$shortDescription
-haskell:LongDescription=$longDescription
-__END__
+    $short_blurb = '; documentation';
+    $long_blurb = << 'QUOTE_END';
+This package provides the documentation for a library for the Haskell
+programming language.
+See http://www.haskell.org/ for more information on Haskell.
+QUOTE_END
+}
 
-    version=$(dpkg-query --showformat='${version}' --show ${hc} | egrep -o ".*-" \
-	| egrep -o "[^-]*")
-    echo "haskell:${hc}-version=${hc} (>= ${version}), ${hc} (<< ${version}+)" >> $sfile.tmp
+$short_blurb //= $EMPTY;
+$long_blurb //= $EMPTY;
 
-    mv $sfile.tmp $sfile
-done
+chomp $short_blurb;
+chomp $long_blurb;
+
+# replace newlines with magic marker
+$long_blurb =~ s{ \n }{$MAGIC_MARKER}gx;
+
+for my $installable (@{ $dh{DOPACKAGES} }) {
+
+    my $substvars_path = "debian/$installable.substvars";
+
+    replace_line($substvars_path, 'haskell:ShortBlurb',$short_blurb // $EMPTY);
+    replace_line($substvars_path, 'haskell:Blurb', $long_blurb // $EMPTY);
+}
+
+exit;
+
+sub replace_line {
+    my ($path, $field, $value) = @_;
+
+    $value //= $EMPTY;
+
+    path($path)->touch;
+
+    my @lines = grep { !m{^ $field = }x } path($path)->lines_utf8;
+
+    push(@lines, "$field=$value" . $NEWLINE);
+
+    path($path)->spew_utf8(@lines);
+
+    return;
+}
+
+=head1 NAME
+
+dh_haskell_blurbs - standard haskell package description blurbs
+
+=head1 SYNOPSIS
+
+B<dh_haskell_blurbs> [S<I<debhelper options>>]
+[B<--type=>I<blurb-type>]
+
+=head1 DESCRIPTION
+
+dh_haskell_blurbs is a Debhelper program that provides substvars for standard blurbs in Haskell package descriptions.
+You can use it like this: C<${haskell:Blurb}>
+
+or like that: C<${haskell:Blurb}>
+
+=head1 SEE ALSO
+
+L<debhelper(7)>
+
+=head1 AUTHOR
+
+Joachim Breitner <nomeata@debian.org>
+
+=cut
+
+# Local Variables:
+# indent-tabs-mode: nil
+# cperl-indent-level: 4
+# End:
+# vim: syntax=perl sw=4 sts=4 sr et

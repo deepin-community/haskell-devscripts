@@ -22,7 +22,7 @@ dh_haskell assumes that your packages are adhering to the draft Haskell policy.
 Your control file must build the binary library files using packages
 named libghc-<name>-<variation>, where <name> is the name of your package; and
 <variation> is dev, prof or doc. These packages should be Architecture: any
-(dev, and proc) or all (doc).
+(dev, and prof) or all (doc).
 
 The <prof> package contains profiling enabled libraries. Currently
 only GHC supports profiling. Due to restrictions of the GHC compiler,
